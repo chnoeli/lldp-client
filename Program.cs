@@ -94,7 +94,17 @@ namespace lldp_client
         }
 
         static List<string> LLDP_MAC_LIST = new List<string> { "01:80:c2:00:00:0e", "01:80:c2:00:00:03", "01:80:c2:00:00:00" };
-
+        static Dictionary<int, string> TLV_MAPPING = new Dictionary<int, string>() {
+            { 1, "Chassis ID" },
+            { 2, "Port ID" },
+            { 3, "TTL" },
+            { 4, "Port Description" },
+            { 5, "System name" },
+            { 6, "System description" },
+            { 7, "System capabilities" },
+            { 8, "Management address" },
+            { 127, "Custom TLV" }
+         };
 
         /// <summary>
         /// Prints the time and length of each received packet
@@ -108,21 +118,22 @@ namespace lldp_client
 
 
             List<byte> lis = convertToList(data);
-            string dstMAC = convertToHexSting(lis.GetRange(0, 6));
-            string srcMAC = convertToHexSting(lis.GetRange(7, 6));
-            string etherType = convertToHexSting(lis.GetRange(12, 2), "");
+            string dstMAC = convertToHexString(lis.GetRange(0, 6));
+            string srcMAC = convertToHexString(lis.GetRange(7, 6));
+            string etherType = convertToHexString(lis.GetRange(12, 2), "");
 
             //Check if packet is LLDP Packet
             if (LLDP_MAC_LIST.Contains(dstMAC) && etherType == "88cc")
             {
-                List<TLVEntry> tlvs = getTLVValue(lis.GetRange(14, lis.Count - 14));
+                List<TLVEntry> tlvs = getTLVValues(lis.GetRange(14, lis.Count - 14));
                 foreach (TLVEntry entry in tlvs)
                 {
-                    if (TLV_MAPPING.ContainsKey(entry.key) && entry.key != 127)
+                    string tmpValue;
+                    if (TLV_MAPPING.TryGetValue(entry.key, out tmpValue) && entry.key != 127)
                     {
-                        TLV_MAPPING tm = new TLV_MAPPING(entry.key);
-                        Console.Write(tm.getAsString() + ":\t");
-                        Console.WriteLine(System.Text.Encoding.Default.GetString(entry.value.ToArray()));
+                        Console.Write(entry.key.ToString() + "\t" + tmpValue + ":\t");
+                        Console.WriteLine(entry.getValue());
+                        //Console.WriteLine(System.Text.Encoding.Default.GetString(entry.value.ToArray()));
                     }
                 }
                 Console.WriteLine("\n---------------------\n\n\n");
@@ -144,7 +155,7 @@ namespace lldp_client
             return res;
         }
 
-        private static string convertToHexSting(List<byte> lis, string delimiter = ":")
+        public static string convertToHexString(List<byte> lis, string delimiter = ":")
         {
             String res = "";
             foreach (var item in lis)
@@ -158,7 +169,7 @@ namespace lldp_client
             return res.ToLower();
         }
 
-        private static List<TLVEntry> getTLVValue(List<byte> lis)
+        private static List<TLVEntry> getTLVValues(List<byte> lis)
         {
             List<TLVEntry> res = new List<TLVEntry>();
 
@@ -171,11 +182,18 @@ namespace lldp_client
                 int meta = (lis[offset + 0] * 0x0100) + lis[offset + 1];
                 type = meta >> 9;
                 length = meta & 0x1FF;
-                var value = lis.GetRange(offset + 2, length);
-                res.Add(new TLVEntry(type, length, value));
+                if (length > 1)
+                {
+                    int subType;
+                    List<byte> value;
+                    value = lis.GetRange(offset + 2, length);
 
-                offset = offset + 2 + length;
-                //TODO Catch 127 Values
+
+                    res.Add(new TLVEntry(type, length, value));
+                    offset = offset + 2 + length;
+                    //TODO Catch 127 Values
+                }
+
 
             } while (type != 00 && length != 00);
 
