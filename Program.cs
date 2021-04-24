@@ -14,9 +14,6 @@ namespace lldp_client
         static void Main(string[] appArguments)
         {
             //https://www.codeproject.com/Articles/1705/IP-Multicasting-in-C
-            // Print SharpPcap version
-            string ver = SharpPcap.Version.VersionString;
-            Console.WriteLine("SharpPcap {0}, Example3.BasicCap.cs", ver);
 
             // Retrieve the device list
             var devices = CaptureDeviceList.Instance;
@@ -93,18 +90,18 @@ namespace lldp_client
 
         }
 
-        static List<string> LLDP_MAC_LIST = new List<string> { "01:80:c2:00:00:0e", "01:80:c2:00:00:03", "01:80:c2:00:00:00" };
-        static Dictionary<int, string> TLV_MAPPING = new Dictionary<int, string>() {
-            { 1, "Chassis ID" },
-            { 2, "Port ID" },
-            { 3, "TTL" },
-            { 4, "Port Description" },
-            { 5, "System name" },
-            { 6, "System description" },
-            { 7, "System capabilities" },
-            { 8, "Management address" },
-            { 127, "Custom TLV" }
-         };
+        private static List<string> LLDP_MAC_LIST = new List<string> { "01:80:c2:00:00:0e", "01:80:c2:00:00:03", "01:80:c2:00:00:00" };
+        //static Dictionary<int, string> TLV_MAPPING = new Dictionary<int, string>() {
+        //    { 1, "Chassis ID" },
+        //    { 2, "Port ID" },
+        //    { 3, "TTL" },
+        //    { 4, "Port Description" },
+        //    { 5, "System name" },
+        //    { 6, "System description" },
+        //    { 7, "System capabilities" },
+        //    { 8, "Management address" },
+        //    { 127, "Custom TLV" }
+        // };
 
         /// <summary>
         /// Prints the time and length of each received packet
@@ -114,7 +111,6 @@ namespace lldp_client
             var time = e.Packet.Timeval.Date;
             var len = e.Packet.Data.Length;
             byte[] data = e.Packet.Data;
-            //byte[] srcMAC = { 0,0,0,0,0,0 };
 
 
             List<byte> lis = convertToList(data);
@@ -129,12 +125,13 @@ namespace lldp_client
                 foreach (TLVEntry entry in tlvs)
                 {
                     string tmpValue;
-                    if (TLV_MAPPING.TryGetValue(entry.key, out tmpValue) && entry.key != 127)
-                    {
-                        Console.Write(entry.key.ToString() + "\t" + tmpValue + ":\t");
-                        Console.WriteLine(entry.getValue());
-                        //Console.WriteLine(System.Text.Encoding.Default.GetString(entry.value.ToArray()));
-                    }
+                    //if (TLV_MAPPING.TryGetValue(entry.key, out tmpValue) && entry.key != 127)
+                    //{
+                    Console.Write(entry.key.ToString() + "\t" + entry.description + ":\t");
+                    if (entry.key == 127) Console.Write(entry.subType + "\t" + entry.oui + "\t" + entry.customDescription + "\t");
+                    Console.WriteLine(entry.value);
+                    //Console.WriteLine(System.Text.Encoding.Default.GetString(entry.value.ToArray()));
+                    //}
                 }
                 Console.WriteLine("\n---------------------\n\n\n");
                 //Console.WriteLine("{0}:{1}:{2},{3} Len={4}", time.Hour, time.Minute, time.Second, time.Millisecond, len);
@@ -169,7 +166,7 @@ namespace lldp_client
             return res.ToLower();
         }
 
-        private static List<TLVEntry> getTLVValues(List<byte> lis)
+        private static List<TLVEntry> getTLVValues(List<byte> data)
         {
             List<TLVEntry> res = new List<TLVEntry>();
 
@@ -179,19 +176,17 @@ namespace lldp_client
 
             do
             {
-                int meta = (lis[offset + 0] * 0x0100) + lis[offset + 1];
+                int meta = (data[offset + 0] * 0x0100) + data[offset + 1];
                 type = meta >> 9;
                 length = meta & 0x1FF;
                 if (length > 1)
                 {
-                    int subType;
                     List<byte> value;
-                    value = lis.GetRange(offset + 2, length);
-
+                    value = data.GetRange(offset + 2, length);
 
                     res.Add(new TLVEntry(type, length, value));
                     offset = offset + 2 + length;
-                    //TODO Catch 127 Values
+
                 }
 
 
