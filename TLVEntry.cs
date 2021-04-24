@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace lldp_client
 {
@@ -51,7 +49,7 @@ namespace lldp_client
             //Custom vendor specific TLVs
             else if (this.key == 127)
             {
-                this.oui = convertToHexSting(value.GetRange(0, 3));
+                this.oui = convertToHexString(value.GetRange(0, 3));
                 this.subType = value[3];
                 this.valueLis = value.GetRange(4, value.Count - 4);
             }
@@ -107,10 +105,9 @@ namespace lldp_client
                     return getManagementAddress(this.valueLis);
                 //Custom values
                 case 0x7F:
-                    return getValueForCustomTLV(this.valueLis);
-                //TODO Catch 127 Values
+                    return getValueForCustomTLV(this.valueLis);                
                 default:
-                    return convertToString(this.valueLis);
+                    return convertToHexString(this.valueLis);
             }
 
         }
@@ -124,7 +121,7 @@ namespace lldp_client
                     return convertToInteger(this.valueLis);
                 //Format MAC Address
                 case 0x04:
-                    return convertToHexSting(this.valueLis);
+                    return convertToHexString(this.valueLis);
                 //Format string
                 case 0x05:
                     return convertToString(this.valueLis);
@@ -134,7 +131,7 @@ namespace lldp_client
 
         }
 
-        public static string convertToHexSting(List<byte> lis, string delimiter = ":")
+        public static string convertToHexString(List<byte> lis, string delimiter = ":")
         {
             String res = "";
             foreach (var item in lis)
@@ -153,7 +150,9 @@ namespace lldp_client
             string result = "";
             foreach (var item in lis)
             {
-                result += Encoding.ASCII.GetString(new[] { item }) + delimiter;
+                if (item == 0x0a) result += "\\n";
+                else result += Encoding.ASCII.GetString(new[] { item }) + delimiter;
+
             }
             if (delimiter != "")
             {
@@ -255,16 +254,16 @@ namespace lldp_client
                     // LLDP-MED Cap
                     case 1:
                         this.customDescription = "LLDP-MED Cap";
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                     // Network Policy
                     case 2:
                         this.customDescription = "Network Policy";
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                     //Location Identifier
                     case 3:
                         //TODO implement Location Identifier
                         this.customDescription = "Location Identifier";
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                     // Inventory - Hardware Revision
                     case 5:
                         this.customDescription = "Inventory - Hardware Revision";
@@ -280,7 +279,7 @@ namespace lldp_client
                     // Inventory - Serial Number
                     case 8:
                         this.customDescription = "Inventory - Serial Number";
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                     // Inventory - Manufacturer Name
                     case 9:
                         this.customDescription = "Inventory - Manufacturer Name";
@@ -291,7 +290,7 @@ namespace lldp_client
                         return convertToString(data);
                     default:
                         this.customDescription = "n/a";
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                 }
             }
             //IEEE 802.1 Working Group
@@ -317,9 +316,9 @@ namespace lldp_client
                     case 1:
                         this.customDescription = "MAC/PHY Configuration/Status";
                         //TODO Implement MAC/PHY Configuration/Status 
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                     default:
-                        return convertToHexSting(data);
+                        return convertToHexString(data);
                 }
             }
 
